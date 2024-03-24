@@ -16,6 +16,5 @@
 
     <string name="storage_dir_input_label">Supabase Storage Dir</string>
 
-    <string name="csv_export">CSV 내보내기</string>
-    <string name="image_export">이미지 내보내기</string>
+    <string name="export">내보내기</string>
 </resources>
