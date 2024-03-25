@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -14,6 +15,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Divider
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
@@ -41,6 +43,7 @@ import dbgenerator.composeapp.generated.resources.name_en
 import dbgenerator.composeapp.generated.resources.name_ko
 import dbgenerator.composeapp.generated.resources.save
 import dbgenerator.composeapp.generated.resources.storage_dir_input_label
+import kotlinx.coroutines.launch
 import model.Whisky
 import org.jetbrains.compose.resources.stringResource
 import java.util.UUID
@@ -48,35 +51,62 @@ import java.util.UUID
 @Composable
 @Preview
 fun App() {
+    val csvGenerator = remember { CsvGenerator() }
+    val imageDownloader = remember { ImageDownloader() }
 
     var whiskies by remember { mutableStateOf(listOf<Whisky>()) }
     var selectedWhisky by remember { mutableStateOf<Whisky?>(null) }
+    var storageDir by remember { mutableStateOf(getCurrentDate()) }
+
+    val scope = rememberCoroutineScope()
+
+    var showLoading by remember { mutableStateOf(false) }
+
+    fun export() {
+        scope.launch {
+            showLoading = true
+            csvGenerator.export(whiskies.toList(), storageDir)
+            imageDownloader.downloadImages(whiskies)
+            showLoading = false
+        }
+    }
 
     MaterialTheme {
-        Row {
-            Input(
-                modifier = Modifier.width(500.dp).fillMaxHeight(),
-                whisky = selectedWhisky,
-                onClickSave = { whisky ->
-                    whiskies = whiskies.toMutableList().apply {
-                        removeIf { it.id == whisky.id }
-                        add(whisky)
-                    }.toList()
-                    selectedWhisky = null
-                }
-            )
-            WhiskyList(
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                whiskies = whiskies.toList(),
-                onClickRemove = { index ->
-                    whiskies = whiskies.toMutableList().apply {
-                        removeAt(index)
-                    }.toList()
-                },
-                onClickMofidy = { index ->
-                    selectedWhisky = whiskies[index]
-                }
-            )
+        Box(modifier = Modifier.fillMaxSize()) {
+            Row {
+                Input(
+                    modifier = Modifier.width(500.dp).fillMaxHeight(),
+                    whisky = selectedWhisky,
+                    onClickSave = { whisky ->
+                        whiskies = whiskies.toMutableList().apply {
+                            removeIf { it.id == whisky.id }
+                            add(whisky)
+                        }.toList()
+                        selectedWhisky = null
+                    }
+                )
+                WhiskyList(
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    whiskies = whiskies.toList(),
+                    storageDir = storageDir,
+                    onChangeStorageDir = {
+                        storageDir = it
+                    },
+                    onClickExport = { export() },
+                    onClickRemove = { index ->
+                        whiskies = whiskies.toMutableList().apply {
+                            removeAt(index)
+                        }.toList()
+                    },
+                    onClickModify = { index ->
+                        selectedWhisky = whiskies[index]
+                    }
+                )
+            }
+
+            if(showLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center).size(50.dp))
+            }
         }
     }
 }
@@ -85,12 +115,13 @@ fun App() {
 @Composable
 private fun WhiskyList(
     modifier: Modifier,
+    storageDir: String,
     whiskies: List<Whisky>,
+    onChangeStorageDir: (String) -> Unit,
+    onClickExport: () -> Unit,
     onClickRemove: (index: Int) -> Unit,
-    onClickMofidy: (index: Int) -> Unit,
+    onClickModify: (index: Int) -> Unit,
 ) {
-    var storageDir by remember { mutableStateOf(getCurrentDate()) }
-
     val scrollState = rememberLazyListState()
     LazyColumn(
         modifier = modifier,
@@ -110,11 +141,12 @@ private fun WhiskyList(
                         )
                     },
                     maxLines = 1,
-                    onValueChange = { storageDir = it })
+                    onValueChange = onChangeStorageDir
+                )
 
                 Button(
                     modifier = Modifier.weight(1f),
-                    onClick = { }
+                    onClick = { onClickExport.invoke() }
                 ) {
                     Text(text = stringResource(Res.string.export))
                 }
@@ -141,7 +173,7 @@ private fun WhiskyList(
                 }
                 Button(
                     onClick = {
-                        onClickMofidy.invoke(index)
+                        onClickModify.invoke(index)
                     }
                 ) {
                     Text(
