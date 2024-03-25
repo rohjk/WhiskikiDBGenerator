@@ -36,6 +36,7 @@ import dbgenerator.composeapp.generated.resources.delete
 import dbgenerator.composeapp.generated.resources.export
 import dbgenerator.composeapp.generated.resources.image_url
 import dbgenerator.composeapp.generated.resources.load
+import dbgenerator.composeapp.generated.resources.modify
 import dbgenerator.composeapp.generated.resources.name_en
 import dbgenerator.composeapp.generated.resources.name_ko
 import dbgenerator.composeapp.generated.resources.save
@@ -49,15 +50,19 @@ import java.util.UUID
 fun App() {
 
     var whiskies by remember { mutableStateOf(listOf<Whisky>()) }
+    var selectedWhisky by remember { mutableStateOf<Whisky?>(null) }
 
     MaterialTheme {
         Row {
             Input(
                 modifier = Modifier.width(500.dp).fillMaxHeight(),
+                whisky = selectedWhisky,
                 onClickSave = { whisky ->
                     whiskies = whiskies.toMutableList().apply {
+                        removeIf { it.id == whisky.id }
                         add(whisky)
                     }.toList()
+                    selectedWhisky = null
                 }
             )
             WhiskyList(
@@ -67,6 +72,9 @@ fun App() {
                     whiskies = whiskies.toMutableList().apply {
                         removeAt(index)
                     }.toList()
+                },
+                onClickMofidy = { index ->
+                    selectedWhisky = whiskies[index]
                 }
             )
         }
@@ -79,6 +87,7 @@ private fun WhiskyList(
     modifier: Modifier,
     whiskies: List<Whisky>,
     onClickRemove: (index: Int) -> Unit,
+    onClickMofidy: (index: Int) -> Unit,
 ) {
     var storageDir by remember { mutableStateOf(getCurrentDate()) }
 
@@ -117,10 +126,10 @@ private fun WhiskyList(
         ) { index, item ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(
-                    modifier = Modifier.padding(horizontal = 10.dp),
                     onClick = {
                         onClickRemove.invoke(index)
                     }
@@ -130,13 +139,23 @@ private fun WhiskyList(
                         text = stringResource(Res.string.delete)
                     )
                 }
+                Button(
+                    onClick = {
+                        onClickMofidy.invoke(index)
+                    }
+                ) {
+                    Text(
+                        fontSize = 12.sp,
+                        text = stringResource(Res.string.modify)
+                    )
+                }
                 Text(
                     text = "${index + 1}. " + item.toString(),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
 
-            if (index < whiskies.size -1 ) {
+            if (index < whiskies.size - 1) {
                 Divider(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
                     thickness = 1.dp,
@@ -150,6 +169,7 @@ private fun WhiskyList(
 @OptIn(ExperimentalResourceApi::class)
 @Composable
 private fun Input(
+    whisky: Whisky? = null,
     modifier: Modifier,
     onClickSave: (Whisky) -> Unit
 ) {
@@ -159,19 +179,26 @@ private fun Input(
         ),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        var koName by remember { mutableStateOf("") }
-        var enName by remember { mutableStateOf("") }
-        var inputImageUrl by remember { mutableStateOf("") }
-        var originImageUrl by remember { mutableStateOf("") }
-        var country by remember { mutableStateOf("") }
-        var category by remember { mutableStateOf("") }
-        var abv by remember { mutableStateOf("") }
+        var koName by remember(whisky) { mutableStateOf(whisky?.koName.orEmpty()) }
+        var enName by remember(whisky) { mutableStateOf(whisky?.enName.orEmpty()) }
+        var inputImageUrl by remember(whisky) { mutableStateOf(whisky?.originImageUrl.orEmpty()) }
+        var originImageUrl by remember(whisky) { mutableStateOf("") }
+        var country by remember(whisky) { mutableStateOf(whisky?.country.orEmpty()) }
+        var category by remember(whisky) { mutableStateOf(whisky?.category.orEmpty()) }
+        var abv by remember(whisky) { mutableStateOf(whisky?.abv.orEmpty()) }
 
         val painter = rememberImagePainter(originImageUrl)
 
-        val saveButtonEnable by remember {
+        val saveButtonEnable by remember(whisky) {
             derivedStateOf {
-                listOf(koName, enName, originImageUrl, country, category, abv ).all { it.isNotEmpty() }
+                listOf(
+                    koName,
+                    enName,
+                    originImageUrl,
+                    country,
+                    category,
+                    abv
+                ).all { it.isNotEmpty() }
             }
         }
 
@@ -245,9 +272,15 @@ private fun Input(
             modifier = innerModifier,
             enabled = saveButtonEnable,
             onClick = {
-                val id = UUID.randomUUID()
-                val whisky = Whisky(
-                    id = id.toString(),
+                val w = whisky?.copy(
+                    koName = koName,
+                    enName = enName,
+                    country = country,
+                    category = category,
+                    abv = abv,
+                    originImageUrl = originImageUrl,
+                ) ?: Whisky(
+                    id = UUID.randomUUID().toString(),
                     koName = koName,
                     enName = enName,
                     country = country,
@@ -255,7 +288,15 @@ private fun Input(
                     abv = abv,
                     originImageUrl = originImageUrl,
                 )
-                onClickSave.invoke(whisky)
+                onClickSave.invoke(w)
+
+                koName = ""
+                enName = ""
+                country = ""
+                category = ""
+                abv = ""
+                originImageUrl = ""
+                inputImageUrl = ""
             }
         ) {
             Text(stringResource(Res.string.save))
