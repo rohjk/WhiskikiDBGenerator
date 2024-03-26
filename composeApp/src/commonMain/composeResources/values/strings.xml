@@ -14,6 +14,7 @@
     <string name="category">카테고리</string>
     <string name="abv">도수</string>
     <string name="image_url">이미지URL</string>
+    <string name="check_image">이미지 확인</string>
 
     <string name="storage_dir_input_label">Supabase Storage Dir</string>
 

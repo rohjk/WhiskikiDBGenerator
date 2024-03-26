@@ -33,6 +33,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 import dbgenerator.composeapp.generated.resources.Res
 import dbgenerator.composeapp.generated.resources.abv
 import dbgenerator.composeapp.generated.resources.category
+import dbgenerator.composeapp.generated.resources.check_image
 import dbgenerator.composeapp.generated.resources.country
 import dbgenerator.composeapp.generated.resources.delete
 import dbgenerator.composeapp.generated.resources.export
@@ -250,7 +251,7 @@ private fun Input(
                         originImageUrl = inputImageUrl
                     },
                 ) {
-                    Text(stringResource(Res.string.load))
+                    Text(stringResource(Res.string.check_image))
                 }
             }
         }
